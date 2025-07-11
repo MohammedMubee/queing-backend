@@ -153,8 +153,9 @@ export const getAllUpcoming = async (req: Request, res: Response) => {
           },
         },
       },
+    
     ]);
-    console.log(upcomingBooking,'upcoming')
+    
     if (upcomingBooking.length === 0) {
       return res.status(404).json({ message: "No upcoming bookings found." });
     }
@@ -162,6 +163,96 @@ export const getAllUpcoming = async (req: Request, res: Response) => {
     res.json({ data: upcomingBooking, messeage: "retrive succesfully" });
   } catch (error) {
     console.error("Error fetching upcoming booking:", error);
+    res.status(500).json({ message: "Internal server error." });
+  }
+};
+
+export const updateBookingStatus = async (req: Request, res: Response) => {
+  const { bookingId } = req.params;
+  const { status } = req.body;
+
+  if (!["pending", "confirmed", "cancelled", "completed"].includes(status)) {
+    return res.status(400).json({ message: "Invalid status value." });
+  }
+
+  try {
+    const updatedBooking = await BookingModel.findByIdAndUpdate(
+      bookingId,
+      { status },
+      { new: true }
+    );
+
+    if (!updatedBooking) {
+      return res.status(404).json({ message: "Booking not found." });
+    }
+
+    res.status(200).json({
+      message: "Status updated successfully.",
+      data: updatedBooking,
+    });
+  } catch (error) {
+    console.error("Error updating booking status:", error);
+    res.status(500).json({ message: "Internal server error." });
+  }
+};
+
+export const deleteBooking = async (req: Request, res: Response) => {
+  console.log('dellet')
+  const { bookingId } = req.params;
+
+  if (!mongoose.Types.ObjectId.isValid(bookingId)) {
+    return res.status(400).json({ message: "Invalid booking ID." });
+  }
+
+  try {
+    const deletedBooking = await BookingModel.findByIdAndDelete(bookingId);
+   console.log(deleteBooking)
+    if (!deletedBooking) {
+      return res.status(404).json({ message: "Booking not found." });
+    }
+
+    res.status(200).json({ message: "Booking deleted successfully." });
+  } catch (error) {
+    console.error("Error deleting booking:", error);
+    res.status(500).json({ message: "Internal server error." });
+  }
+};
+
+
+export const updateStatusByTime = async (req: Request, res: Response) => {
+  console.log("🔥 Expire API hit", req.params.bookingId);
+
+  try {
+    const { bookingId } = req.params;
+    console.log(bookingId,'updatebooking')
+
+    if (!mongoose.Types.ObjectId.isValid(bookingId)) {
+      return res.status(400).json({ message: "Invalid booking ID." });
+    }
+
+    const booking = await BookingModel.findById(bookingId);
+    if (!booking) {
+      return res.status(404).json({ message: "Booking not found." });
+    }
+
+    const bookingDate = moment(booking.date).format("YYYY-MM-DD");
+    const bookingTime = moment(booking.timeSlot, "hh:mm A");
+    const nowDate = moment().format("YYYY-MM-DD");
+    const nowTime = moment();
+
+    const isExpired =
+      moment(nowDate).isAfter(bookingDate) ||
+      (nowDate === bookingDate );
+
+    if (isExpired && booking.status !== "expired") {
+      booking.status = "expired";
+      await booking.save();
+      return res.status(200).json({ message: "Booking marked as expired.", data: booking });
+    }
+    console.log(booking,'updatebooking')
+    return res.status(200).json({ message: "Booking is not expired.", data: booking });
+  } catch (error) {
+    console.error("Error checking booking expiration:", error);
     res.status(500).json({ message: "Internal server error." });
   }
 };
