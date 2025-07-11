@@ -1,13 +1,13 @@
 import BookingModel from "../schema/booking.schema";
 
 import { Request, Response } from "express";
-import moment from 'moment';
+import moment from "moment";
 
 import { IBooking } from "../schema/booking.schema";
 import mongoose from "mongoose";
 export const createBooking = async (req: Request, res: Response) => {
   try {
-    console.log(req.body,'createBooking')
+    console.log(req.body, "createBooking");
     const { userId, tokenId, service, status, timeSlot, date } = req.body;
 
     if (!tokenId || !service || !timeSlot || !date) {
@@ -35,7 +35,7 @@ export const createBooking = async (req: Request, res: Response) => {
     });
 
     await newBooking.save();
-        console.log(newBooking,'newBooking')
+    console.log(newBooking, "newBooking");
 
     res
       .status(201)
@@ -64,14 +64,14 @@ export const getBookingById = async (req: Request, res: Response) => {
 };
 
 export const getAllBookings = async (req: Request, res: Response) => {
-  console.log(req.params)
+  console.log(req.params);
   try {
-      console.log(req.params)
+    console.log(req.params);
 
-        const { userId } = req.params;
+    const { userId } = req.params;
 
-    const bookings = await BookingModel.find({userId}).populate("userId");
-    console.log(bookings)
+    const bookings = await BookingModel.find({ userId }).populate("userId");
+    console.log(bookings);
     res.status(200).json({ bookings });
   } catch (error) {
     console.error("Error fetching bookings:", error);
@@ -79,31 +79,30 @@ export const getAllBookings = async (req: Request, res: Response) => {
   }
 };
 
-export const getUpcomingBooking = async (req: Request, res: Response)=>{
-   const { userId } = req.params;
+export const getUpcomingBooking = async (req: Request, res: Response) => {
+  const { userId } = req.params;
 
-
-  const currentDate = moment().format('YYYY-MM-DD');     
-  const currentTime = moment().format('hh:mm A');        
+  const currentDate = moment().format("YYYY-MM-DD");
+  const currentTime = moment().format("hh:mm A");
 
   try {
     const upcomingBooking = await BookingModel.aggregate([
       {
         $match: {
           userId: new mongoose.Types.ObjectId(userId),
-          status: { $in: ['pending', 'confirmed'] },
+          status: { $in: ["pending", "confirmed"] },
           $expr: {
             $or: [
-              { $gt: ['$date', new Date()] },
+              { $gt: ["$date", new Date()] },
               {
                 $and: [
                   {
                     $eq: [
-                      { $dateToString: { format: '%Y-%m-%d', date: '$date' } },
+                      { $dateToString: { format: "%Y-%m-%d", date: "$date" } },
                       currentDate,
                     ],
                   },
-                  { $gt: ['$timeSlot', currentTime] },
+                  { $gt: ["$timeSlot", currentTime] },
                 ],
               },
             ],
@@ -115,17 +114,54 @@ export const getUpcomingBooking = async (req: Request, res: Response)=>{
     ]);
 
     if (upcomingBooking.length === 0) {
-      return res.status(404).json({ message: 'No upcoming bookings found.' });
+      return res.status(404).json({ message: "No upcoming bookings found." });
     }
 
     res.json(upcomingBooking[0]);
   } catch (error) {
-    console.error('Error fetching upcoming booking:', error);
-    res.status(500).json({ message: 'Internal server error.' });
+    console.error("Error fetching upcoming booking:", error);
+    res.status(500).json({ message: "Internal server error." });
   }
 };
 
-export const getAllUpcoming =async(req:Request,res:Response)=>{
-  
+export const getAllUpcoming = async (req: Request, res: Response) => {
+  // dont need exiting datas
+  const currentDate = moment().format("YYYY-MM-DD");
+  const currentTime = moment().format("hh:mm A");
+  try {
+    const { userId } = req.params;
+    const upcomingBooking = await BookingModel.aggregate([
+      {
+        $match: {
+          userId: new mongoose.Types.ObjectId(userId),
+          status: { $in: ["pending", "confirmed"] },
+          $expr: {
+            $or: [
+              { $gt: ["$date", new Date()] },
+              {
+                $and: [
+                  {
+                    $eq: [
+                      { $dateToString: { format: "%Y-%m-%d", date: "$date" } },
+                      currentDate,
+                    ],
+                  },
+                  { $gt: ["$timeSlot", currentTime] },
+                ],
+              },
+            ],
+          },
+        },
+      },
+    ]);
+    console.log(upcomingBooking,'upcoming')
+    if (upcomingBooking.length === 0) {
+      return res.status(404).json({ message: "No upcoming bookings found." });
+    }
 
-}
+    res.json({ data: upcomingBooking, messeage: "retrive succesfully" });
+  } catch (error) {
+    console.error("Error fetching upcoming booking:", error);
+    res.status(500).json({ message: "Internal server error." });
+  }
+};
